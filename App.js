@@ -1,93 +1,161 @@
-import * as Location from "expo-location";
+import { StatusBar } from "expo-status-bar";
+import React, {useState, useEffect} from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Pressable,
+  TextInput,
+  Alert
+} from "react-native";
+import { Fontisto } from "@expo/vector-icons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { theme } from "./colors";
 
-import React, { useEffect, useState } from "react";
-import { View, Text, Dimensions, StyleSheet, ScrollView } from "react-native";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
+const STORAGE_KEY = "@toDos";
 
 export default function App() {
-  const [city, setCity] = useState("Loading...");
-  const [location, setLocation] = useState();
-  const [ok, setOk] = useState(true);
-  const ask = async () => {
-    const { granted } = await Location.requestForegroundPermissionsAsync();
-    if (!granted) {
-      setOk(false);
-    }
-    const {
-      coords: { latitude, longitude },
-    } = await Location.getCurrentPositionAsync({ accuracy: 5 });
-    const location = await Location.reverseGeocodeAsync(
-      { latitude, longitude },
-      { useGoogleMaps: false }
-    );
-    setCity(location[0].city);
-  };
-  useEffect(() => {
-    ask();
+  const [working, setWorking] = useState(true);
+  const [text, setText] = useState();
+  const [toDos, setToDos] = useState({});
+
+  useEffect(() => { //앱이 시작하자마자 실행
+    loadToDos();
   }, []);
+
+
+  const travel = () => setWorking(false);
+  const work = () => setWorking(true);
+
+  const onChangeText = (payload) => setText(payload)
+
+  const loadToDos = async () => {
+    const s = await AsyncStorage.getItem(STORAGE_KEY);
+    setToDos(JSON.parse(s));
+  };
+  const addToDo = async () => {
+    if (text === "") {
+      return
+    }
+    //save to do
+    const newToDos = {
+      ...toDos,
+      [Date.now()]: { text, working }
+    };
+    setToDos(newToDos);
+    await saveToDo(newToDos);
+    setText("");
+  }
+
+  const saveToDo = async (toSave) => {
+    try {
+      const jsonValue = JSON.stringify(toSave)
+      await AsyncStorage.setItem(STORAGE_KEY, jsonValue)
+    } catch (e) {
+      // saving error
+    }
+  }
+
+  const deleteToDo = (key) => {
+    Alert.alert("Delete To Do?", "Are you sure?",
+      [
+        {text: "Cancel"},
+        {
+          text: "I'm Sure", onPress: () => {
+            const newToDos = { ...toDos }
+            delete newToDos[key]
+            setToDos(newToDos);
+            saveToDo(newToDos);
+          }
+        }
+      ]
+    );
+    return;
+    
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.city}>
-        <Text style={styles.cityName}>{city}</Text>
+      <StatusBar style="auto" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={work}>
+          <Text style={{ ...styles.btnText, color: working ? "white" : theme.grey}}>Work</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={travel}>
+          <Text style={{ ...styles.btnText, color: !working ? "white" : theme.grey }}>Travel</Text>
+        </TouchableOpacity>
       </View>
+      <TextInput
+        style={styles.input}
+        value={text} 
+        placeholder={working ? "Add a  To Do" : "Where do you want to go?"}
+        onChangeText={onChangeText}
+        onSubmitEditing={addToDo}
+        returnKeyType="done"
+      />
       <ScrollView
-        pagingEnabled
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.weather}
-      >
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
-        </ScrollView>
-    </View >
+        style={styles.scrollView}
+        TouchableWithoutFeedback>
+        {Object.keys(toDos).map((key) => (
+          toDos[key].working === working ? (
+            <View style={styles.toDo} key={key}>
+              <Text style={styles.toDoText}>{toDos[key].text}</Text>
+              <TouchableOpacity onPress={() => deleteToDo(key)}>
+                <Fontisto name="trash" size={18} color={theme.grey} />
+              </TouchableOpacity>
+            </View>
+          ) : null  
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "tomato",
+    backgroundColor: theme.bg,
+    paddingHorizontal: 20,
+
   },
-  city: {
-    flex: 1.2,
-    justifyContent: "center",
-    alignItems: "center",
+  header: {
+    justifyContent: "space-between",
+    flexDirection: "row",
+    marginTop:100,
   },
-  cityName: {
-    fontSize: 58,
-    fontWeight: "500",
-  },
-  weather: {},
-  day: {
-    width: SCREEN_WIDTH,
-    alignItems: "center",
-  },
-  temp: {
-    marginTop: 50,
+  btnText: {
+    fontSize: 30,
     fontWeight: "600",
-    fontSize: 178,
+    color: "white"
   },
-  description: {
-    marginTop: -30,
-    fontSize: 60,
+  input: {
+    backgroundColor: "white",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    marginTop: 20,
+    fontSize: 18
   },
+  toDo: {
+    backgroundColor: theme.toDoBg,
+    marginTop: 10,
+    marginBottom: 10,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderRadius: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between", 
+  },
+  toDoText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "500",
+  }
 });
 
 
