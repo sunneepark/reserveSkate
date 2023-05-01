@@ -6,9 +6,6 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  TouchableHighlight,
-  TouchableWithoutFeedback,
-  Pressable,
   TextInput,
   Alert
 } from "react-native";
@@ -35,7 +32,7 @@ export default function App() {
 
   const loadToDos = async () => {
     const s = await AsyncStorage.getItem(STORAGE_KEY);
-    setToDos(JSON.parse(s));
+    s !== null ? setToDos(JSON.parse(s)) : null;
   };
   const addToDo = async () => {
     if (text === "") {
@@ -65,7 +62,9 @@ export default function App() {
       [
         {text: "Cancel"},
         {
-          text: "I'm Sure", onPress: () => {
+          text: "I'm Sure",
+          style: "destructive",
+          onPress: () => {
             const newToDos = { ...toDos }
             delete newToDos[key]
             setToDos(newToDos);
@@ -97,10 +96,8 @@ export default function App() {
         onSubmitEditing={addToDo}
         returnKeyType="done"
       />
-      <ScrollView
-        style={styles.scrollView}
-        TouchableWithoutFeedback>
-        {Object.keys(toDos).map((key) => (
+      <ScrollView>
+        {Object.keys(toDos).map((key) =>
           toDos[key].working === working ? (
             <View style={styles.toDo} key={key}>
               <Text style={styles.toDoText}>{toDos[key].text}</Text>
@@ -108,8 +105,8 @@ export default function App() {
                 <Fontisto name="trash" size={18} color={theme.grey} />
               </TouchableOpacity>
             </View>
-          ) : null  
-        ))}
+          ) : null
+        )}
       </ScrollView>
     </View>
   );
