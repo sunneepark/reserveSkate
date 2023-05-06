@@ -1,3 +1,5 @@
+// 3. 수정 아이콘을 하나 만들어서 유저가 text를 수정할 수 있게 만들기 : text input
+
 import { StatusBar } from "expo-status-bar";
 import React, {useState, useEffect} from "react";
 import {
@@ -7,13 +9,15 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert
+  Alert,
+  Pressable
 } from "react-native";
-import { Fontisto } from "@expo/vector-icons";
+import { Fontisto, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from "./colors";
 
 const STORAGE_KEY = "@toDos";
+const WHERE_KEY = "@whereNavi";
 
 export default function App() {
   const [working, setWorking] = useState(true);
@@ -21,15 +25,27 @@ export default function App() {
   const [toDos, setToDos] = useState({});
 
   useEffect(() => { //앱이 시작하자마자 실행
+    loadWhere();
     loadToDos();
   }, []);
 
 
-  const travel = () => setWorking(false);
-  const work = () => setWorking(true);
+  const travel = () => {
+    setWorking(false);
+    AsyncStorage.setItem(WHERE_KEY, 'false')
+  }
+  const work = () => {
+    setWorking(true);
+    AsyncStorage.setItem(WHERE_KEY, 'true')
+  }
 
   const onChangeText = (payload) => setText(payload)
 
+  const loadWhere = async () => {
+    const w = await AsyncStorage.getItem(WHERE_KEY);
+    console.log(w)
+    setWorking(w !== null ? (w === 'true') : true);
+  }
   const loadToDos = async () => {
     const s = await AsyncStorage.getItem(STORAGE_KEY);
     s !== null ? setToDos(JSON.parse(s)) : null;
@@ -41,8 +57,9 @@ export default function App() {
     //save to do
     const newToDos = {
       ...toDos,
-      [Date.now()]: { text, working }
+      [Date.now()]: { text, working, "completed":"false" }
     };
+    console.log(newToDos)
     setToDos(newToDos);
     await saveToDo(newToDos);
     setText("");
@@ -55,6 +72,14 @@ export default function App() {
     } catch (e) {
       // saving error
     }
+  }
+  const changeCompleted = async (key) => {
+    //change completed
+    const newToDos = {...toDos};
+    newToDos[key].completed = !newToDos[key].completed;
+
+    setToDos(newToDos);
+    await saveToDo(newToDos);
   }
 
   const deleteToDo = (key) => {
@@ -77,6 +102,8 @@ export default function App() {
     
   };
 
+  
+
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
@@ -91,7 +118,7 @@ export default function App() {
       <TextInput
         style={styles.input}
         value={text} 
-        placeholder={working ? "Add a  To Do" : "Where do you want to go?"}
+        placeholder={working ? "Add a To Do" : "Where do you want to go?"}
         onChangeText={onChangeText}
         onSubmitEditing={addToDo}
         returnKeyType="done"
@@ -100,7 +127,14 @@ export default function App() {
         {Object.keys(toDos).map((key) =>
           toDos[key].working === working ? (
             <View style={styles.toDo} key={key}>
-              <Text style={styles.toDoText}>{toDos[key].text}</Text>
+              <View style={styles.section}>
+                <Pressable
+                  style={[styles.checkboxBase, toDos[key].completed && styles.checkboxChecked]}
+                  onPress={() => changeCompleted(key)} checked={toDos[key].completed}>
+                  {toDos[key].completed ? <Ionicons name="checkmark" size={19} color="white" /> : null}
+                </Pressable>
+                <TextInput style={styles.toDoText} >{toDos[key].text}</TextInput>
+              </View>
               <TouchableOpacity onPress={() => deleteToDo(key)}>
                 <Fontisto name="trash" size={18} color={theme.grey} />
               </TouchableOpacity>
@@ -148,11 +182,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between", 
   },
+  section: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
   toDoText: {
     color: "white",
     fontSize: 16,
     fontWeight: "500",
-  }
+    textAlign: "left"
+  },
+  checkboxBase: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: 'coral',
+    backgroundColor: 'transparent',
+    marginRight: 8
+  },
+  checkboxChecked: {
+    backgroundColor: 'coral',
+  },
 });
 
 
