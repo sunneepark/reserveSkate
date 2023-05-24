@@ -133,7 +133,7 @@ export default function App() {
                   onPress={() => changeCompleted(key)} checked={toDos[key].completed}>
                   {toDos[key].completed ? <Ionicons name="checkmark" size={19} color="white" /> : null}
                 </Pressable>
-                <TextInput style={styles.toDoText} >{toDos[key].text}</TextInput>
+                <Text style={styles.toDoText} >{toDos[key].text}</Text>
               </View>
               <TouchableOpacity onPress={() => deleteToDo(key)}>
                 <Fontisto name="trash" size={18} color={theme.grey} />
